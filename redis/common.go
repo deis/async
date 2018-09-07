@@ -14,14 +14,6 @@ const (
 	deferredTaskQueueName = "deferredTasks"
 )
 
-func getActiveTaskQueueName(workerID string) string {
-	return fmt.Sprintf("active-tasks:%s", workerID)
-}
-
-func getWatchedTaskQueueName(workerID string) string {
-	return fmt.Sprintf("watched-tasks:%s", workerID)
-}
-
 func (e *engine) getTaskFromJSON(
 	taskJSON []byte,
 	queueName string,
@@ -49,4 +41,21 @@ func (e *engine) getTaskFromJSON(
 		return nil, nil
 	}
 	return task, nil
+}
+
+func (e *engine) wrapRedisDestination(dest string) string {
+	if e.config.RedisPrefix != "" {
+		return fmt.Sprintf("%s:%s", e.config.RedisPrefix, dest)
+	}
+	return dest
+}
+
+func (e *engine) getActiveTaskQueueName(workerID string) string {
+	activeTaskQueue := fmt.Sprintf("active-tasks:%s", workerID)
+	return e.wrapRedisDestination(activeTaskQueue)
+}
+
+func (e *engine) getWatchedTaskQueueName(workerID string) string {
+	watchedTaskQueue := fmt.Sprintf("watched-tasks:%s", workerID)
+	return e.wrapRedisDestination(watchedTaskQueue)
 }

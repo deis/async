@@ -37,6 +37,10 @@ type engine struct {
 	executeTasks executeTasksFn
 	// This allows tests to inject an alternative implementation of this function
 	watchDeferredTasks watchDeferredTasksFn
+
+	pendingTaskQueueName  string
+	deferredTaskQueueName string
+	workerSetName         string
 }
 
 // NewEngine returns a new Redis-based implementation of the aync.Engine
@@ -69,6 +73,9 @@ func NewEngine(config Config) async.Engine {
 	e.receiveDeferredTasks = e.defaultReceiveTasks
 	e.executeTasks = e.defaultExecuteTasks
 	e.watchDeferredTasks = e.defaultWatchDeferredTasks
+	e.pendingTaskQueueName = e.wrapRedisDestination(pendingTaskQueueName)
+	e.deferredTaskQueueName = e.wrapRedisDestination(deferredTaskQueueName)
+	e.workerSetName = e.wrapRedisDestination(workerSetName)
 	return e
 }
 
@@ -93,9 +100,9 @@ func (e *engine) SubmitTask(task async.Task) error {
 
 	var queueName string
 	if task.GetExecuteTime() != nil {
-		queueName = deferredTaskQueueName
+		queueName = e.deferredTaskQueueName
 	} else {
-		queueName = pendingTaskQueueName
+		queueName = e.pendingTaskQueueName
 	}
 
 	err = e.redisClient.LPush(queueName, taskJSON).Err()
@@ -118,9 +125,9 @@ func (e *engine) Run(ctx context.Context) error {
 		case errCh <- &errCleanerStopped{
 			err: e.clean(
 				ctx,
-				workerSetName,
-				pendingTaskQueueName,
-				deferredTaskQueueName,
+				e.workerSetName,
+				e.pendingTaskQueueName,
+				e.deferredTaskQueueName,
 				cleaningInterval,
 			),
 		}:
@@ -147,7 +154,7 @@ func (e *engine) Run(ctx context.Context) error {
 		}
 	}()
 	// Announce this worker's existence
-	err := e.redisClient.SAdd(workerSetName, e.workerID).Err()
+	err := e.redisClient.SAdd(e.workerSetName, e.workerID).Err()
 	if err != nil {
 		return fmt.Errorf(
 			`error adding worker "%s" to worker set: %s`,
@@ -162,8 +169,8 @@ func (e *engine) Run(ctx context.Context) error {
 		executorErrCh := make(chan error)
 		go e.receivePendingTasks(
 			ctx,
-			pendingTaskQueueName,
-			getActiveTaskQueueName(e.workerID),
+			e.pendingTaskQueueName,
+			e.getActiveTaskQueueName(e.workerID),
 			pendingReceiverRetCh,
 			pendingReceiverErrCh,
 		)
@@ -172,8 +179,8 @@ func (e *engine) Run(ctx context.Context) error {
 			go e.executeTasks(
 				ctx,
 				pendingReceiverRetCh,
-				pendingTaskQueueName,
-				deferredTaskQueueName,
+				e.pendingTaskQueueName,
+				e.deferredTaskQueueName,
 				executorErrCh,
 			)
 		}
@@ -181,7 +188,7 @@ func (e *engine) Run(ctx context.Context) error {
 		case err := <-pendingReceiverErrCh:
 			errCh <- &errReceiverStopped{
 				workerID:  e.workerID,
-				queueName: pendingTaskQueueName,
+				queueName: e.pendingTaskQueueName,
 				err:       err,
 			}
 		case err := <-executorErrCh:
@@ -196,8 +203,8 @@ func (e *engine) Run(ctx context.Context) error {
 		watcherErrCh := make(chan error)
 		go e.receiveDeferredTasks(
 			ctx,
-			deferredTaskQueueName,
-			getWatchedTaskQueueName(e.workerID),
+			e.deferredTaskQueueName,
+			e.getWatchedTaskQueueName(e.workerID),
 			deferredReceiverRetCh,
 			deferredReceiverErrCh,
 		)
@@ -206,7 +213,7 @@ func (e *engine) Run(ctx context.Context) error {
 			go e.watchDeferredTasks(
 				ctx,
 				deferredReceiverRetCh,
-				pendingTaskQueueName,
+				e.pendingTaskQueueName,
 				watcherErrCh,
 			)
 		}
@@ -214,7 +221,7 @@ func (e *engine) Run(ctx context.Context) error {
 		case err := <-deferredReceiverErrCh:
 			errCh <- &errReceiverStopped{
 				workerID:  e.workerID,
-				queueName: deferredTaskQueueName,
+				queueName: e.deferredTaskQueueName,
 				err:       err,
 			}
 		case err := <-watcherErrCh:

@@ -15,7 +15,7 @@ func TestDefaultExecuteTasks(t *testing.T) {
 
 	pendingTaskQueueName := getDisposableQueueName()
 	deferredTaskQueueName := getDisposableQueueName()
-	activeTaskQueueName := getActiveTaskQueueName(e.workerID)
+	activeTaskQueueName := e.getActiveTaskQueueName(e.workerID)
 
 	// Register some jobs with the worker
 	var badJobCallCount int
