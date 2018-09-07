@@ -41,6 +41,8 @@ type engine struct {
 	pendingTaskQueueName  string
 	deferredTaskQueueName string
 	workerSetName         string
+	activeTaskQueueName   string
+	watchedTaskQueueName  string
 }
 
 // NewEngine returns a new Redis-based implementation of the aync.Engine
@@ -76,6 +78,12 @@ func NewEngine(config Config) async.Engine {
 	e.pendingTaskQueueName = e.wrapRedisDestination(pendingTaskQueueName)
 	e.deferredTaskQueueName = e.wrapRedisDestination(deferredTaskQueueName)
 	e.workerSetName = e.wrapRedisDestination(workerSetName)
+	e.activeTaskQueueName = e.wrapRedisDestination(
+		fmt.Sprintf("active-tasks:%s", workerID),
+	)
+	e.watchedTaskQueueName = e.wrapRedisDestination(
+		fmt.Sprintf("watched-tasks:%s", workerID),
+	)
 	return e
 }
 
@@ -170,7 +178,7 @@ func (e *engine) Run(ctx context.Context) error {
 		go e.receivePendingTasks(
 			ctx,
 			e.pendingTaskQueueName,
-			e.getActiveTaskQueueName(e.workerID),
+			e.activeTaskQueueName,
 			pendingReceiverRetCh,
 			pendingReceiverErrCh,
 		)
@@ -204,7 +212,7 @@ func (e *engine) Run(ctx context.Context) error {
 		go e.receiveDeferredTasks(
 			ctx,
 			e.deferredTaskQueueName,
-			e.getWatchedTaskQueueName(e.workerID),
+			e.watchedTaskQueueName,
 			deferredReceiverRetCh,
 			deferredReceiverErrCh,
 		)

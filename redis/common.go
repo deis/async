@@ -49,13 +49,3 @@ func (e *engine) wrapRedisDestination(dest string) string {
 	}
 	return dest
 }
-
-func (e *engine) getActiveTaskQueueName(workerID string) string {
-	activeTaskQueue := fmt.Sprintf("active-tasks:%s", workerID)
-	return e.wrapRedisDestination(activeTaskQueue)
-}
-
-func (e *engine) getWatchedTaskQueueName(workerID string) string {
-	watchedTaskQueue := fmt.Sprintf("watched-tasks:%s", workerID)
-	return e.wrapRedisDestination(watchedTaskQueue)
-}
