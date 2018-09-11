@@ -40,9 +40,9 @@ func (e *engine) getTaskFromJSON(
 	return task, nil
 }
 
-func (e *engine) prefixRedisKey(dest string) string {
+func (e *engine) prefixRedisKey(key string) string {
 	if e.config.RedisPrefix != "" {
-		return fmt.Sprintf("%s:%s", e.config.RedisPrefix, dest)
+		return fmt.Sprintf("%s:%s", e.config.RedisPrefix, key)
 	}
-	return dest
+	return key
 }
