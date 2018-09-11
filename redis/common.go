@@ -8,10 +8,7 @@ import (
 )
 
 const (
-	workerSetName         = "workers"
-	aliveIndicator        = "alive"
-	pendingTaskQueueName  = "pendingTasks"
-	deferredTaskQueueName = "deferredTasks"
+	aliveIndicator = "alive"
 )
 
 func (e *engine) getTaskFromJSON(

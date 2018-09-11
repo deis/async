@@ -75,9 +75,9 @@ func NewEngine(config Config) async.Engine {
 	e.receiveDeferredTasks = e.defaultReceiveTasks
 	e.executeTasks = e.defaultExecuteTasks
 	e.watchDeferredTasks = e.defaultWatchDeferredTasks
-	e.pendingTaskQueueName = e.wrapRedisDestination(pendingTaskQueueName)
-	e.deferredTaskQueueName = e.wrapRedisDestination(deferredTaskQueueName)
-	e.workerSetName = e.wrapRedisDestination(workerSetName)
+	e.pendingTaskQueueName = e.wrapRedisDestination("pendingTasks")
+	e.deferredTaskQueueName = e.wrapRedisDestination("deferredTasks")
+	e.workerSetName = e.wrapRedisDestination("workers")
 	e.activeTaskQueueName = e.wrapRedisDestination(
 		fmt.Sprintf("active-tasks:%s", workerID),
 	)
