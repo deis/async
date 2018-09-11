@@ -19,6 +19,13 @@ type engine struct {
 	jobsFnsMutex sync.RWMutex
 	redisClient  *redis.Client
 	config       Config
+
+	pendingTaskQueueName  string
+	deferredTaskQueueName string
+	workerSetName         string
+	activeTaskQueueName   string
+	watchedTaskQueueName  string
+
 	// This allows tests to inject an alternative implementation of this function
 	clean cleanFn
 	// This allows tests to inject an alternative implementation of this function
@@ -37,12 +44,6 @@ type engine struct {
 	executeTasks executeTasksFn
 	// This allows tests to inject an alternative implementation of this function
 	watchDeferredTasks watchDeferredTasksFn
-
-	pendingTaskQueueName  string
-	deferredTaskQueueName string
-	workerSetName         string
-	activeTaskQueueName   string
-	watchedTaskQueueName  string
 }
 
 // NewEngine returns a new Redis-based implementation of the aync.Engine
@@ -66,15 +67,7 @@ func NewEngine(config Config) async.Engine {
 		redisClient: redis.NewClient(redisOpts),
 		config:      config,
 	}
-	e.clean = e.defaultClean
-	e.cleanActiveTaskQueue = e.defaultCleanWorkerQueue
-	e.cleanWatchedTaskQueue = e.defaultCleanWorkerQueue
-	e.runHeart = e.defaultRunHeart
-	e.heartbeat = e.defaultHeartbeat
-	e.receivePendingTasks = e.defaultReceiveTasks
-	e.receiveDeferredTasks = e.defaultReceiveTasks
-	e.executeTasks = e.defaultExecuteTasks
-	e.watchDeferredTasks = e.defaultWatchDeferredTasks
+
 	e.pendingTaskQueueName = e.prefixRedisKey("pendingTasks")
 	e.deferredTaskQueueName = e.prefixRedisKey("deferredTasks")
 	e.workerSetName = e.prefixRedisKey("workers")
@@ -84,6 +77,17 @@ func NewEngine(config Config) async.Engine {
 	e.watchedTaskQueueName = e.prefixRedisKey(
 		fmt.Sprintf("watched-tasks:%s", workerID),
 	)
+
+	e.clean = e.defaultClean
+	e.cleanActiveTaskQueue = e.defaultCleanWorkerQueue
+	e.cleanWatchedTaskQueue = e.defaultCleanWorkerQueue
+	e.runHeart = e.defaultRunHeart
+	e.heartbeat = e.defaultHeartbeat
+	e.receivePendingTasks = e.defaultReceiveTasks
+	e.receiveDeferredTasks = e.defaultReceiveTasks
+	e.executeTasks = e.defaultExecuteTasks
+	e.watchDeferredTasks = e.defaultWatchDeferredTasks
+
 	return e
 }
 
